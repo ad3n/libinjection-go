@@ -8,13 +8,12 @@ import (
 	"testing"
 )
 
-// Examples can be read at https://portswigger.net/web-security/cross-site-scripting/cheat-sheet
 func TestIsXSS(t *testing.T) {
 	examples := []struct {
 		input string
 		isXSS bool
 	}{
-		// True positives
+
 		{input: "<script>alert(1);</script>", isXSS: true},
 		{input: "><script>alert(1);</script>", isXSS: true},
 		{input: "x ><script>alert(1);</script>", isXSS: true},
@@ -36,56 +35,56 @@ func TestIsXSS(t *testing.T) {
 		{input: "<a href=\"JAVASCRIPT:alert(1);\" >", isXSS: true},
 		{input: "<style>@keyframes x{}</style><xss style=\"animation-name:x\" onanimationstart=\"alert(1)\"></xss>", isXSS: true},
 		{input: "<noembed><img title=\"</noembed><img src onerror=alert(1)>\"></noembed>", isXSS: true},
-		{input: "javascript:/*--></title></style></textarea></script></xmp><svg/onload='+/\"/+/onmouseover=1/+/[*/[]/+alert(1)//'>", isXSS: true}, // polyglot payload
+		{input: "javascript:/*--></title></style></textarea></script></xmp><svg/onload='+/\"/+/onmouseover=1/+/[*/[]/+alert(1)//'>", isXSS: true},
 		{input: "<xss class=progress-bar-animated onanimationstart=alert(1)>", isXSS: true},
 		{input: "<button popovertarget=x>Click me</button><xss ontoggle=alert(1) popover id=x>XSS</xss>", isXSS: true},
-		// Payload sample from https://github.com/payloadbox/xss-payload-list
+
 		{input: "<HTML xmlns:xss><?import namespace=\"xss\" implementation=\"%(htc)s\"><xss:xss>XSS</xss:xss></HTML>\"\"\",\"XML namespace.\"),(\"\"\"<XML ID=\"xss\"><I><B>&lt;IMG SRC=\"javas<!-- -->cript:javascript:alert(1)\"&gt;</B></I></XML><SPAN DATASRC=\"#xss\" DATAFLD=\"B\" DATAFORMATAS=\"HTML\"></SPAN>", isXSS: true},
-		// Events from issue #70 - previously undetected event handlers
+
 		{input: "<img onauxclick=alert(1)>", isXSS: true},
 		{input: "<img onpagereveal=alert(1)>", isXSS: true},
 		{input: "<img onpageswap=alert(1)>", isXSS: true},
 		{input: "<img onscrollsnapchange=alert(1)>", isXSS: true},
 		{input: "<img onscrollsnapchanging=alert(1)>", isXSS: true},
-		// XML comment detection (tokenLen must be > 3 to reach this check)
+
 		{input: "<!--xml -->", isXSS: true},
 		{input: "<!--xmlfoo-->", isXSS: true},
 		{input: "<!--xml:namespace-->", isXSS: true},
 		{input: "<!--XML -->", isXSS: true},
-		// SVG tags
+
 		{input: "<svg>", isXSS: true},
 		{input: "<svg onload=alert(1)>", isXSS: true},
 		{input: "<svganimate>", isXSS: true},
-		// True negatives
-		{input: "<!--xml-->", isXSS: false},   // tokenLen=3, doesn't reach XML check
-		{input: "<!--?xml -->", isXSS: false}, // "xml" not at start of token
-		{input: "<!--axml -->", isXSS: false}, // "xml" not at start of token
+
+		{input: "<!--xml-->", isXSS: false},
+		{input: "<!--?xml -->", isXSS: false},
+		{input: "<!--axml -->", isXSS: false},
 		{input: "myvar=onfoobar==", isXSS: false},
-		{input: "onY29va2llcw==", isXSS: false}, // base64 encoded "thisisacookie", prefixed by "on"
-		// stateTagOpen EOF path (single '<')
+		{input: "onY29va2llcw==", isXSS: false},
+
 		{input: "<", isXSS: false},
-		// False positives from issue #46 - URLs containing black scheme names in path
+
 		{input: `=<a href="https://data">`, isXSS: false},
 		{input: `<a href="https://github.com/Simbiat/database">`, isXSS: false},
-		// DOCTYPE triggers detection
+
 		{input: "<!DOCTYPE html>", isXSS: true},
-		// style attribute (attributeTypeStyle) triggers detection
+
 		{input: `<div style="color:red">`, isXSS: true},
-		// filter attribute (attributeTypeStyle) triggers detection
+
 		{input: `<div filter="alpha">`, isXSS: true},
-		// ATTRIBUTENAME attribute (attributeTypeAttrIndirect) with black attr value triggers detection
+
 		{input: `<div attributename="onclick">`, isXSS: true},
-		// ATTRIBUTENAME with non-black attr value does not trigger
+
 		{input: `<div attributename="class">`, isXSS: false},
-		// IE conditional comment [IF
+
 		{input: "<!--[IF IE]>foo<![endif]-->", isXSS: true},
-		// IE conditional comment [if (lowercase)
+
 		{input: "<!--[if IE]>foo<![endif]-->", isXSS: true},
-		// backtick in comment
+
 		{input: "<!--`foo`-->", isXSS: true},
-		// IMPORT comment
+
 		{input: "<!--IMPORT resource.htc-->", isXSS: true},
-		// ENTITY comment
+
 		{input: "<!--ENTITY foo bar-->", isXSS: true},
 	}
 
@@ -142,11 +141,13 @@ func runXSSTest(t testing.TB, data map[string]string, filename, flag string) {
 
 	switch flag {
 	case xss:
-		if IsXSS(data[sectionInput]) {
+		switch {
+		case IsXSS(data[sectionInput]):
 			actual = "1"
-		} else {
+		default:
 			actual = "0"
 		}
+
 	case html5:
 		h5 := new(h5State)
 		h5.init(data[sectionInput], html5FlagsDataState)
@@ -211,6 +212,7 @@ func BenchmarkXSSDriver(b *testing.B) {
 			name: fi.Name(),
 			data: data,
 		}
+
 		switch {
 		case strings.Contains(fi.Name(), "-html5-"):
 			cases.html5 = append(cases.html5, tc)
@@ -265,9 +267,6 @@ func TestXSS(t *testing.T) {
 	}
 }
 
-// TestIsXSSEmbeddedNullsInTagComment covers IE import/entity pseudo-tags that
-// hide a NUL inside the keyword. upperRemoveNulls drops NULs, so normalizing
-// only a fixed 6-byte window pushed the keyword tail out of range.
 func TestIsXSSEmbeddedNullsInTagComment(t *testing.T) {
 	tests := []string{
 		"<?im\x00port namespace=\"t\">",
@@ -285,12 +284,6 @@ func TestIsXSSEmbeddedNullsInTagComment(t *testing.T) {
 	}
 }
 
-// TestIsXSSCDataBounds covers the bounds guard in stateCData.
-//
-// index is computed relative to the loop-local cursor pos, so the guard has
-// to use that same cursor. It previously used h.pos, which stops advancing
-// after the first iteration, letting the dereference run past the end of the
-// input. Every input here panicked before the fix.
 func TestIsXSSCDataBounds(t *testing.T) {
 	inputs := []string{
 		"<![CDATA[]]]",

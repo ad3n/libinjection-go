@@ -8,18 +8,12 @@ import (
 func parseQStringCore(s *sqliState, offset int) int {
 	pos := s.pos + offset
 
-	// if we are already at the end of the string
-	// if current byte is not q or Q
-	// if we don't have 2 more bytes
-	// if byte[2] != a single quote
-	// then, just treat as word
 	if pos >= s.length || (s.input[pos] != 'q' && s.input[pos] != 'Q') || pos+2 >= s.length || s.input[pos+1] != byteSingle {
 		return parseWord(s)
 	}
 
 	ch := s.input[pos+2]
-	// the ch >127 is un-needed since
-	// we assume char is signed
+
 	if ch < 33 {
 		return parseWord(s)
 	}
@@ -42,6 +36,7 @@ func parseQStringCore(s *sqliState, offset int) int {
 		s.current.strClose = byteNull
 		return s.length
 	}
+
 	s.current.assign(sqliTokenTypeString, pos+3, index, s.input[pos+3:])
 	s.current.strOpen = 'q'
 	s.current.strClose = 'q'
@@ -59,7 +54,7 @@ func parseByteFunctions(s *sqliState, parse byte) int {
 //nolint:gocyclo // complexity 65, reduction tracked in #128
 func buildByteParsers() []byteParser {
 	parsers := make([]byteParser, 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		switch i {
 		case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32:
 			parsers[i] = parseWhite
@@ -191,6 +186,7 @@ func buildByteParsers() []byteParser {
 			parsers[i] = parseWord
 		}
 	}
+
 	return parsers
 }
 

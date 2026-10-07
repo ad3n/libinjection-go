@@ -15,20 +15,16 @@ func flag2Delimiter(flag int) byte {
 	}
 }
 
-// OK! "	\"	" one backslash = escaped!
-//
-//		   "   \\"	" two backslash = not escaped!
-//	    "  \\\"	" three backslash = escaped!
 func isBackslashEscaped(str string) bool {
 	count := 0
 	for i := len(str) - 1; i >= 0; i-- {
-		if str[i] == '\\' {
-			count++
-		} else {
+		if str[i] != '\\' {
 			break
 		}
+
+		count++
 	}
-	// if number of backslashes is odd, it is escaped
+
 	return count%2 != 0
 }
 
@@ -37,23 +33,11 @@ func isDoubleDelimiterEscaped(str string) bool {
 }
 
 func isByteWhite(ch byte) bool {
-	// ' '  space is 0x32
-	// '\t  0x09 \011 horizontal tab
-	// '\n' 0x0a \012 new line
-	// '\v' 0x0b \013 vertical tab
-	// '\f' 0x0c \014 new page
-	// '\r' 0x0d \015 carriage return
-	// 0x00 \000 null (oracle)
-	// 0xa0 \240 is Latin-1
 	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\v' || ch == '\f' || ch == '\r' || ch == '\240' || ch == '\000'
 }
 
-// Find the largest string containing certain characters.
-//
-// if accept is "ABC", then this function would be similar to
-// regexp.match(str, "[ABC]*")
 func strLenSpn(s string, length int, accept string) int {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if strings.IndexByte(accept, s[i]) == -1 {
 			return i
 		}
@@ -63,7 +47,7 @@ func strLenSpn(s string, length int, accept string) int {
 }
 
 func strLenCSpn(s string, length int, accept []byte) int {
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if accept[s[i]] == 1 {
 			return i
 		}
@@ -72,26 +56,7 @@ func strLenCSpn(s string, length int, accept []byte) int {
 	return length
 }
 
-// This detects MySQL comments, comments that
-// start with /x! We just ban these now but
-// previously we attempted to parse the inside.
-//
-// For reference:
-// the form of /x![anything]x/ or /x!12345[anything]x/
-//
-// MySQL3 (maybe 4), allowed this:
-//
-//	/x!0selectx/ 1;
-//
-// where 0 could be any number
-//
-// The last version of MySQL 3 was in 2003.
-//
-// It is unclear if the MySQL 3 syntax was allowed
-// in MySQL 4. The last version of MySQL 4 was in 2008.
 func isMysqlComment(s string, pos int) bool {
-	// so far...
-	// s[pos] == '/' && s[pos+1] == '*'
 	if pos+2 >= len(s) {
 		return false
 	}
@@ -107,24 +72,39 @@ func toUpperCmp(expectedUpper, s string) bool {
 	if len(expectedUpper) != len(s) {
 		return false
 	}
+
 	for i := 0; i < len(expectedUpper); i++ {
 		c := s[i]
 		if c >= 'a' && c <= 'z' {
 			c -= 0x20
 		}
+
 		if expectedUpper[i] != c {
 			return false
 		}
 	}
+
 	return true
 }
 
 func searchKeyword(key string, keywords map[string]byte) byte {
-	upperKey := strings.ToUpper(key)
-
-	if val, ok := keywords[upperKey]; ok {
-		return val
+	if len(key) > tokenSize {
+		return keywords[strings.ToUpper(key)]
 	}
 
-	return byteNull
+	var upper [tokenSize]byte
+	for i := range len(key) {
+		c := key[i]
+		if c >= 0x80 {
+			return keywords[strings.ToUpper(key)]
+		}
+
+		if c >= 'a' && c <= 'z' {
+			c -= 'a' - 'A'
+		}
+
+		upper[i] = c
+	}
+
+	return keywords[string(upper[:len(key)])]
 }

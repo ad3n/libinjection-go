@@ -34,7 +34,7 @@ const (
 	html5FlagsValueBackQuote
 )
 
-type fnH5State func() bool
+type fnH5State func(*h5State) bool
 
 type h5State struct {
 	s          string

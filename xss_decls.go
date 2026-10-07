@@ -13,8 +13,6 @@ type stringType struct {
 	attributeType int
 }
 
-// blackEventsMap and blacksMap are O(1) lookup tables built at init time from
-// the slices below. isBlackAttr uses these maps instead of linear scans.
 var (
 	blackEventsMap map[string]int
 	blacksMap      map[string]int
@@ -25,17 +23,13 @@ func init() {
 	for _, e := range blackEvents {
 		blackEventsMap[e.name] = e.attributeType
 	}
+
 	blacksMap = make(map[string]int, len(blacks))
 	for _, b := range blacks {
 		blacksMap[b.name] = b.attributeType
 	}
 }
 
-// Events extracted from multiple browser sources:
-//   - WebKit: https://github.com/WebKit/WebKit/blob/main/Source/WebCore/dom/EventNames.json
-//   - Chromium/Blink: https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/dom/global_event_handlers.idl
-//   - Firefox/Gecko: https://github.com/mozilla/gecko-dev/blob/master/dom/events/EventNameList.h
-//   - W3C/WHATWG specifications where applicable
 var blackEvents = []stringType{
 	{"ABORT", attributeTypeBlack},
 	{"ACCESSKEYNOTFOUND", attributeTypeBlack},
@@ -474,11 +468,11 @@ var blackEvents = []stringType{
 var blackTags = []string{
 	"APPLET",
 	"BASE",
-	"COMMENT", // IE http://html5sec.org/#38
+	"COMMENT",
 	"EMBED",
 	"FRAME",
 	"FRAMESET",
-	"HANDLER", // Opera SVG, effectively a script tag
+	"HANDLER",
 	"IFRAME",
 	"IMPORT",
 	"ISINDEX",
@@ -494,29 +488,26 @@ var blackTags = []string{
 	"XSS",
 }
 
-// view-source:
-// data:
-// javascript:
 var blacks = []stringType{
-	{"ACTION", attributeTypeAttrURL},             // form
-	{"ATTRIBUTENAME", attributeTypeAttrIndirect}, // SVG allow indirection of attribute names
-	{"BY", attributeTypeAttrURL},                 // SVG
-	{"BACKGROUND", attributeTypeAttrURL},         // IE6, O11
-	{"DATAFORMATAS", attributeTypeBlack},         // IE
-	{"DATASRC", attributeTypeBlack},              // IE
-	{"DYNSRC", attributeTypeAttrURL},             // Obsolete img attribute
-	{"FILTER", attributeTypeStyle},               // Opera, SVG inline style
-	{"FORMACTION", attributeTypeAttrURL},         // HTML 5
-	{"FOLDER", attributeTypeAttrURL},             // Only on A tags, IE-only
-	{"FROM", attributeTypeAttrURL},               // SVG
-	{"HANDLER", attributeTypeAttrURL},            // SVG Tiny, Opera
+	{"ACTION", attributeTypeAttrURL},
+	{"ATTRIBUTENAME", attributeTypeAttrIndirect},
+	{"BY", attributeTypeAttrURL},
+	{"BACKGROUND", attributeTypeAttrURL},
+	{"DATAFORMATAS", attributeTypeBlack},
+	{"DATASRC", attributeTypeBlack},
+	{"DYNSRC", attributeTypeAttrURL},
+	{"FILTER", attributeTypeStyle},
+	{"FORMACTION", attributeTypeAttrURL},
+	{"FOLDER", attributeTypeAttrURL},
+	{"FROM", attributeTypeAttrURL},
+	{"HANDLER", attributeTypeAttrURL},
 	{"HREF", attributeTypeAttrURL},
-	{"LOWSRC", attributeTypeAttrURL}, // Obsolete img attribute
-	{"POSTER", attributeTypeAttrURL}, // Opera 10,11
+	{"LOWSRC", attributeTypeAttrURL},
+	{"POSTER", attributeTypeAttrURL},
 	{"SRC", attributeTypeAttrURL},
 	{"STYLE", attributeTypeStyle},
-	{"TO", attributeTypeAttrURL},     // SVG
-	{"VALUES", attributeTypeAttrURL}, // SVG
+	{"TO", attributeTypeAttrURL},
+	{"VALUES", attributeTypeAttrURL},
 	{"XLINK:HREF", attributeTypeAttrURL},
 }
 

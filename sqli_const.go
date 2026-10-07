@@ -1,7 +1,6 @@
 package libinjection
 
 const (
-	// sqliFlagNone        = 0
 	sqliFlagQuoteNone   = 1
 	sqliFlagQuoteSingle = 2
 	sqliFlagQuoteDouble = 4
@@ -11,7 +10,7 @@ const (
 
 const (
 	sqliLookupWord = 1
-	// sqliLookupType        = 2
+
 	sqliLookupOperator    = 3
 	sqliLookupFingerprint = 4
 )

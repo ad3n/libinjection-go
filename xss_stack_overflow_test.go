@@ -11,6 +11,5 @@ func TestMemory(t *testing.T) {
 		input[i] = '/'
 	}
 
-	// should not overflow the stack
 	IsXSS(string(input))
 }

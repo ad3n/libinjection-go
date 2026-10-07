@@ -17,6 +17,7 @@ func TestAsciiEqualFold(t *testing.T) {
 		{name: "equal length, mismatch", a: "data", b: "date", want: false},
 		{name: "different length", a: "data", b: "dat", want: false},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := asciiEqualFold(tt.a, tt.b); got != tt.want {
@@ -52,6 +53,7 @@ func TestHtmlDecodeByteAt(t *testing.T) {
 		{name: "hex non-hex terminator", input: "&#x5G", wantVal: 5, wantConsumed: 4},
 		{name: "hex overflow", input: "&#x1000FF5", wantVal: '&', wantConsumed: 1},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotVal, gotConsumed := htmlDecodeByteAt(tt.input)
@@ -96,7 +98,7 @@ func TestIsBlackAttr(t *testing.T) {
 		},
 		{
 			name: "over-length attribute cannot match",
-			attr: "onclick" + strings.Repeat("x", maxNormalizedTokenLen), // 7+64 = 71 bytes > maxNormalizedTokenLen
+			attr: "onclick" + strings.Repeat("x", maxNormalizedTokenLen),
 			want: attributeTypeNone,
 		},
 	}
@@ -176,8 +178,8 @@ func TestIsBlackTag(t *testing.T) {
 		{name: "div tag", tag: "div", want: false},
 		{name: "span tag", tag: "span", want: false},
 		{name: "too short", tag: "sv", want: false},
-		{name: "over-length tag cannot match", tag: "script" + strings.Repeat("x", maxNormalizedTokenLen), want: false}, // 6+64 = 70 bytes > maxNormalizedTokenLen
-		{name: "over-length SVG prefix cannot match via prefix rule", tag: "svg" + strings.Repeat("x", maxNormalizedTokenLen), want: false}, // 3+64 = 67 bytes > maxNormalizedTokenLen
+		{name: "over-length tag cannot match", tag: "script" + strings.Repeat("x", maxNormalizedTokenLen), want: false},
+		{name: "over-length SVG prefix cannot match via prefix rule", tag: "svg" + strings.Repeat("x", maxNormalizedTokenLen), want: false},
 	}
 
 	for _, tt := range tests {
