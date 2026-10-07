@@ -1,7 +1,7 @@
 # libinjection 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![codecov](https://codecov.io/gh/corazawaf/libinjection-go/branch/master/graph/badge.svg?token=RTCQXUDZQQ)](https://codecov.io/gh/corazawaf/libinjection-go)
-[![CodeQL](https://github.com/corazawaf/libinjection-go/actions/workflows/codeql.yml/badge.svg)](https://github.com/corazawaf/libinjection-go/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/ad3n/libinjection-go/branch/master/graph/badge.svg?token=RTCQXUDZQQ)](https://codecov.io/gh/ad3n/libinjection-go)
+[![CodeQL](https://github.com/ad3n/libinjection-go/actions/workflows/codeql.yml/badge.svg)](https://github.com/ad3n/libinjection-go/actions/workflows/codeql.yml)
 
 libinjection is a Go porting of the libinjection([http://www.client9.com/projects/libinjection/](http://www.client9.com/projects/libinjection/)) and it's thread safe.
 
@@ -12,7 +12,7 @@ package main
 
 import (
     "fmt"
-    "github.com/corazawaf/libinjection-go"
+    "github.com/ad3n/libinjection-go"
 )
 
 func main() {
@@ -28,13 +28,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/corazawaf/libinjection-go"
+	"github.com/ad3n/libinjection-go"
 )
 
 func main() {
 	fmt.Println("result: ", libinjection.IsXSS("<script>alert('1')</script>"))
 }
 ```
+
+The module path is `github.com/ad3n/libinjection-go`. Consumers migrating from
+`github.com/corazawaf/libinjection-go` must update their imports and module
+requirement; the package name remains `libinjection`.
 
 ## Performance and compatibility
 
