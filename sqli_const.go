@@ -9,13 +9,6 @@ const (
 )
 
 const (
-	sqliLookupWord = 1
-
-	sqliLookupOperator    = 3
-	sqliLookupFingerprint = 4
-)
-
-const (
 	byteNull   uint8 = 0
 	byteSingle uint8 = '\''
 	byteDouble uint8 = '"'

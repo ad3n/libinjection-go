@@ -50,9 +50,10 @@ input/token references before returning it to the pool.
 SQLi fingerprints remain in a fixed byte array during detection. A positive
 result returns an independent string, preserving the existing `(bool, string)`
 API and allowing callers to keep fingerprints after subsequent calls. ASCII
-keyword lookups use a bounded stack buffer; Unicode and oversized keys retain
-the original Unicode uppercasing behavior. Candidate compound tokens allocate
-only when a merge succeeds. No `unsafe`, CGO, new dependency, or public API is
+keyword lookups use a fixed-size stack buffer. Unicode keys retain the original
+Unicode uppercasing behavior. Successful compound-token merges reuse the source
+text when it already matches the merged token. Other successful merges allocate
+a string for the normalized text. No `unsafe`, CGO, new dependency, or public API is
 introduced.
 
 The module requires Go 1.26.0 or newer. Syntax uses integer range and benchmarks

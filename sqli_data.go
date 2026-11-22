@@ -47,10 +47,6 @@ type byteParser func(state *sqliState) int
 
 var byteParsers = buildByteParsers()
 
-func parseByteFunctions(s *sqliState, parse byte) int {
-	return byteParsers[parse](s)
-}
-
 //nolint:gocyclo // complexity 65, reduction tracked in #128
 func buildByteParsers() []byteParser {
 	parsers := make([]byteParser, 256)

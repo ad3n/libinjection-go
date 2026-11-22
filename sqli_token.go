@@ -2,22 +2,20 @@ package libinjection
 
 import "strings"
 
-type sqliToken struct {
-	pos int
-	len int
-
-	count int
-
-	category byte
-	strOpen  byte
-	strClose byte
-	val      string
-}
-
 const (
 	maxTokens = 5
 	tokenSize = 32
 )
+
+type sqliToken struct {
+	val string
+	pos int
+	len int
+
+	category byte
+	strOpen  byte
+	strClose byte
+}
 
 func (t *sqliToken) parseStringCore(s string, length, pos, offset int, delimiter byte) int {
 	str := s[pos+offset:]

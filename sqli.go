@@ -5,8 +5,14 @@ import (
 	"sync"
 )
 
+var sqliStatePool = sync.Pool{New: func() any { return new(sqliState) }}
+
 type sqliState struct {
+	current *sqliToken
+
 	input string
+
+	tokenVec [8]sqliToken
 
 	length int
 
@@ -14,27 +20,16 @@ type sqliState struct {
 
 	pos int
 
-	tokenVec [8]sqliToken
-
-	current *sqliToken
-
-	fingerprint    [maxTokens]byte
 	fingerprintLen int
 
-	statsCommentDDX int
-
-	statsCommentHash int
-
-	statsFolds int
-
 	statsTokens int
+
+	fingerprint [maxTokens]byte
+
+	needsMySQL bool
 }
 
 func sqliInit(s *sqliState, input string, flags int) {
-	if flags == 0 {
-		flags = sqliFlagQuoteNone | sqliFlagSQLAnsi
-	}
-
 	*s = sqliState{}
 
 	s.input = input
@@ -44,7 +39,7 @@ func sqliInit(s *sqliState, input string, flags int) {
 }
 
 func (s *sqliState) computeFingerprint(flags int) {
-	s.reset(flags)
+	sqliInit(s, s.input, flags)
 	length := s.fold()
 
 	if length > 2 &&
@@ -106,12 +101,23 @@ func (s *sqliState) merge(tokenA, tokenB *sqliToken) bool {
 	buf[length] = ' '
 	length++
 	length += copy(buf[length:], tokenB.val[:tokenB.len])
-	ch := s.lookupWord(sqliLookupWord, string(buf[:length]))
+	ch := searchKeyword(string(buf[:length]))
 	if ch == byteNull {
 		return false
 	}
 
-	tokenA.assign(ch, tokenA.pos, length, string(buf[:length]))
+	length = min(length, tokenSize-1)
+	tokenA.category = ch
+	tokenA.len = length
+	if length <= s.length-tokenA.pos {
+		original := s.input[tokenA.pos : tokenA.pos+length]
+		if original == string(buf[:length]) {
+			tokenA.val = original
+			return true
+		}
+	}
+
+	tokenA.val = string(buf[:length])
 	return true
 }
 
@@ -202,22 +208,18 @@ func (s *sqliState) fold() int {
 		switch {
 		case s.tokenVec[left].category == sqliTokenTypeString && s.tokenVec[left+1].category == sqliTokenTypeString:
 			pos--
-			s.statsFolds++
 			continue
 		case s.tokenVec[left].category == sqliTokenTypeSemiColon && s.tokenVec[left+1].category == sqliTokenTypeSemiColon:
 			pos--
-			s.statsFolds++
 			continue
 		case (s.tokenVec[left].category == sqliTokenTypeOperator || s.tokenVec[left].category == sqliTokenTypeLogicOperator) &&
 			(s.tokenVec[left+1].isUnaryOp() || s.tokenVec[left+1].category == sqliTokenTypeSQLType):
 			pos--
-			s.statsFolds++
 			left = 0
 			continue
 		case s.tokenVec[left].category == sqliTokenTypeLeftParenthesis &&
 			s.tokenVec[left+1].isUnaryOp():
 			pos--
-			s.statsFolds++
 			if left > 0 {
 				left--
 			}
@@ -225,7 +227,6 @@ func (s *sqliState) fold() int {
 			continue
 		case s.merge(&s.tokenVec[left], &s.tokenVec[left+1]):
 			pos--
-			s.statsFolds++
 			if left > 0 {
 				left--
 			}
@@ -282,7 +283,6 @@ func (s *sqliState) fold() int {
 				s.tokenVec[left+1].category == sqliTokenTypeString):
 			s.tokenVec[left] = s.tokenVec[left+1]
 			pos--
-			s.statsFolds++
 			left = 0
 			continue
 		case s.tokenVec[left].category == sqliTokenTypeCollate && s.tokenVec[left+1].category == sqliTokenTypeBareWord:
@@ -297,7 +297,6 @@ func (s *sqliState) fold() int {
 			default:
 				s.tokenVec[left] = s.tokenVec[left+1]
 				pos--
-				s.statsFolds++
 			}
 
 			left = 0
@@ -306,13 +305,11 @@ func (s *sqliState) fold() int {
 			s.tokenVec[left+1].category == sqliTokenTypeLeftParenthesis:
 			pos--
 			left = 0
-			s.statsFolds++
 			continue
 		case s.tokenVec[left].category == sqliTokenTypeRightParenthesis &&
 			s.tokenVec[left+1].category == sqliTokenTypeRightParenthesis:
 			pos--
 			left = 0
-			s.statsFolds++
 			continue
 		case s.tokenVec[left].category == sqliTokenTypeLeftBrace &&
 			s.tokenVec[left+1].category == sqliTokenTypeBareWord:
@@ -323,12 +320,10 @@ func (s *sqliState) fold() int {
 
 			left = 0
 			pos -= 2
-			s.statsFolds += 2
 			continue
 		case s.tokenVec[left+1].category == sqliTokenTypeRightBrace:
 			pos--
 			left = 0
-			s.statsFolds++
 			continue
 		}
 
@@ -394,7 +389,6 @@ func (s *sqliState) fold() int {
 			s.tokenVec[left+2].category == sqliTokenTypeSQLType:
 			pos -= 2
 			left = 0
-			s.statsFolds += 2
 			continue
 		case (s.tokenVec[left].category == sqliTokenTypeBareWord ||
 			s.tokenVec[left].category == sqliTokenTypeNumber ||
@@ -499,7 +493,7 @@ func (s *sqliState) tokenize() bool {
 	for s.pos < s.length {
 		ch := s.input[s.pos]
 
-		s.pos = parseByteFunctions(s, ch)
+		s.pos = byteParsers[ch](s)
 
 		if s.current.category != byteNull {
 			s.statsTokens++
@@ -603,10 +597,6 @@ func (s *sqliState) notWhitelist() bool {
 				return true
 			}
 
-			if s.statsTokens == 3 {
-				return false
-			}
-
 			return false
 		case "s&n", "n&1", "1&1", "1&v", "1&s":
 			if s.statsTokens == 3 {
@@ -626,42 +616,15 @@ func (s *sqliState) checkFingerprint() bool {
 	return s.blacklist() && s.notWhitelist()
 }
 
-func (s *sqliState) lookupWord(lookupType int, word string) byte {
-	if lookupType == sqliLookupFingerprint {
-		if s.checkFingerprint() {
-			return 'X'
-		}
-
-		return byteNull
-	}
-
-	return searchKeyword(word, sqlKeywords)
-}
-
-func (s *sqliState) reset(flags int) {
-	if flags == 0 {
-		flags = sqliFlagQuoteNone | sqliFlagSQLAnsi
-	}
-
-	sqliInit(s, s.input, flags)
-}
-
-func (s *sqliState) reparseAsMySQL() bool {
-	return s.statsCommentDDX != 0 || s.statsCommentHash != 0
-}
-
 //nolint:gocyclo // complexity 11, reduction tracked in #122
-func (s *sqliState) check() bool {
-	if s.length == 0 {
-		return false
-	}
-
+func (s *sqliState) check(input string) bool {
+	s.input = input
 	s.computeFingerprint(sqliFlagQuoteNone | sqliFlagSQLAnsi)
 	if s.checkFingerprint() {
 		return true
 	}
 
-	if s.reparseAsMySQL() {
+	if s.needsMySQL {
 		s.computeFingerprint(sqliFlagQuoteNone | sqliFlagSQLMysql)
 		if s.checkFingerprint() {
 			return true
@@ -674,7 +637,7 @@ func (s *sqliState) check() bool {
 			return true
 		}
 
-		if s.reparseAsMySQL() {
+		if s.needsMySQL {
 			s.computeFingerprint(sqliFlagQuoteSingle | sqliFlagSQLMysql)
 			if s.checkFingerprint() {
 				return true
@@ -692,9 +655,11 @@ func (s *sqliState) check() bool {
 	return false
 }
 
-var sqliStatePool = sync.Pool{New: func() any { return new(sqliState) }}
-
 func IsSQLi(input string) (bool, string) {
+	if input == "" {
+		return false, ""
+	}
+
 	state := sqliStatePool.Get().(*sqliState)
 	defer func() {
 		*state = sqliState{}
@@ -702,8 +667,7 @@ func IsSQLi(input string) (bool, string) {
 		sqliStatePool.Put(state)
 	}()
 
-	sqliInit(state, input, 0)
-	if state.check() {
+	if state.check(input) {
 		return true, string(state.fingerprint[:state.fingerprintLen])
 	}
 

@@ -42,7 +42,7 @@ func printTokenString(t *sqliToken) string {
 	return out
 }
 
-func printToken(t *sqliToken) string {
+func printToken(input string, t *sqliToken) string {
 	out := ""
 	out += string(t.category)
 	out += " "
@@ -50,13 +50,15 @@ func printToken(t *sqliToken) string {
 	case 's':
 		out += printTokenString(t)
 	case 'v':
-		vc := t.count
-		switch {
-		case vc == 1:
+		pos := t.pos
+		if t.strOpen != byteNull {
+			pos--
+		}
+
+		if pos > 0 && input[pos-1] == '@' {
 			out += "@"
-		default:
-			if vc == 2 {
-				out += "@@"
+			if pos > 1 && input[pos-2] == '@' {
+				out += "@"
 			}
 		}
 
@@ -146,12 +148,12 @@ func runSQLiTest(t testing.TB, data map[string]string, filename string, flag str
 	case folding:
 		numTokens := state.fold()
 		for i := range numTokens {
-			actual += printToken(getToken(state, i)) + "\n"
+			actual += printToken(state.input, getToken(state, i)) + "\n"
 		}
 
 	case tokens:
 		for state.tokenize() {
-			actual += printToken(state.current) + "\n"
+			actual += printToken(state.input, state.current) + "\n"
 		}
 	}
 
@@ -279,16 +281,6 @@ func TestFlag2Delimiter(t *testing.T) {
 				t.Errorf("flag2Delimiter(%d) = %v, want %v", tt.flag, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestResetWithZeroFlags(t *testing.T) {
-	s := new(sqliState)
-	sqliInit(s, "SELECT 1", sqliFlagQuoteNone|sqliFlagSQLAnsi)
-
-	s.reset(0)
-	if s.flags != sqliFlagQuoteNone|sqliFlagSQLAnsi {
-		t.Errorf("reset(0) flags = %d, want %d", s.flags, sqliFlagQuoteNone|sqliFlagSQLAnsi)
 	}
 }
 

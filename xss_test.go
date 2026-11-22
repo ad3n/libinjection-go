@@ -111,8 +111,6 @@ func h5TypeToString(h5Type int) string {
 		return "TAG_NAME_CLOSE"
 	case html5TypeTagNameSelfClose:
 		return "TAG_NAME_SELFCLOSE"
-	case html5TypeTagData:
-		return "TAG_DATA"
 	case html5TypeTagClose:
 		return "TAG_CLOSE"
 	case html5TypeAttrName:

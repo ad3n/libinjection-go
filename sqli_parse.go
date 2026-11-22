@@ -1,13 +1,10 @@
 package libinjection
 
-import (
-	"bytes"
-	"strings"
-)
+import "strings"
 
 var (
-	wordAcceptTable = buildAcceptTable(" []{}<>:\\?=@!#~+-*/&|^%(),';\t\n\v\f\r\"\240\000")
-	varAcceptTable  = buildAcceptTable(" <>:\\?=@!#~+-*/&|^%(),';\t\n\v\f\r'`\"")
+	wordRejectTable = buildRejectTable(" []{}<>:\\?=@!#~+-*/&|^%(),';\t\n\v\f\r\"\240")
+	varRejectTable  = buildRejectTable(" <>:\\?=@!#~+-*/&|^%(),';\t\n\v\f\r'`\"")
 )
 
 func parseEolComment(s *sqliState) int {
@@ -98,9 +95,8 @@ func parseByte(s *sqliState) int {
 }
 
 func parseHash(s *sqliState) int {
-	s.statsCommentHash++
+	s.needsMySQL = true
 	if (s.flags & sqliFlagSQLMysql) != 0 {
-		s.statsCommentHash++
 		return parseEolComment(s)
 	}
 
@@ -116,7 +112,7 @@ func parseDash(s *sqliState) int {
 	case s.pos+2 == s.length && s.input[s.pos+1] == '-':
 		return parseEolComment(s)
 	case s.pos+1 < s.length && s.input[s.pos+1] == '-' && (s.flags&sqliFlagSQLAnsi) != 0:
-		s.statsCommentDDX++
+		s.needsMySQL = true
 		return parseEolComment(s)
 	default:
 		s.current.assign(sqliTokenTypeOperator, s.pos, 1, "-")
@@ -175,7 +171,7 @@ func parseOperator2(s *sqliState) int {
 		return s.pos + 3
 	}
 
-	ch := s.lookupWord(sqliLookupOperator, s.input[s.pos:s.pos+2])
+	ch := searchKeyword(s.input[s.pos : s.pos+2])
 	if ch != byteNull {
 		s.current.assign(ch, s.pos, 2, s.input[s.pos:])
 		return s.pos + 2
@@ -194,13 +190,13 @@ func parseString(s *sqliState) int {
 }
 
 func parseWord(s *sqliState) int {
-	length := strLenCSpn(s.input[s.pos:], s.length-s.pos, wordAcceptTable)
+	length := strLenCSpn(s.input[s.pos:], s.length-s.pos, &wordRejectTable)
 	s.current.assign(sqliTokenTypeBareWord, s.pos, length, s.input[s.pos:])
 
 	for i := 0; i < s.current.len; i++ {
 		delimiter := s.current.val[i]
 		if delimiter == '.' || delimiter == '`' {
-			ch := s.lookupWord(sqliLookupWord, s.current.val[:i])
+			ch := searchKeyword(s.current.val[:i])
 			if ch != sqliTokenTypeNone && ch != sqliTokenTypeBareWord {
 				*s.current = sqliToken{}
 
@@ -211,7 +207,7 @@ func parseWord(s *sqliState) int {
 	}
 
 	if length < tokenSize {
-		ch := s.lookupWord(sqliLookupWord, s.current.val[:length])
+		ch := searchKeyword(s.current.val[:length])
 		if ch == byteNull {
 			ch = sqliTokenTypeBareWord
 		}
@@ -224,12 +220,8 @@ func parseWord(s *sqliState) int {
 
 func parseVar(s *sqliState) int {
 	pos := s.pos + 1
-	switch {
-	case pos < s.length && s.input[pos] == '@':
+	if pos < s.length && s.input[pos] == '@' {
 		pos++
-		s.current.count = 2
-	default:
-		s.current.count = 1
 	}
 
 	if pos < s.length {
@@ -248,12 +240,7 @@ func parseVar(s *sqliState) int {
 		}
 	}
 
-	length := strLenCSpn(s.input[pos:], s.length-pos, varAcceptTable)
-	if length == 0 {
-		s.current.assign(sqliTokenTypeVariable, pos, 0, s.input[pos:])
-		return pos
-	}
-
+	length := strLenCSpn(s.input[pos:], s.length-pos, &varRejectTable)
 	s.current.assign(sqliTokenTypeVariable, pos, length, s.input[pos:])
 	return pos + length
 }
@@ -344,7 +331,7 @@ func parseNumber(s *sqliState) int {
 func parseTick(s *sqliState) int {
 	pos := s.current.parseStringCore(s.input, s.length, s.pos, 1, byteTick)
 
-	ch := s.lookupWord(sqliLookupWord, s.current.val[:s.current.len])
+	ch := searchKeyword(s.current.val[:s.current.len])
 	switch {
 	case ch == sqliTokenTypeFunction:
 		s.current.category = sqliTokenTypeFunction
@@ -430,14 +417,12 @@ func parseBWord(s *sqliState) int {
 	return s.pos + end + 1
 }
 
-func buildAcceptTable(acceptStr string) []byte {
-	accept := []byte(acceptStr)
-	acceptTable := make([]byte, 256)
-	for i := range acceptTable {
-		if i < len(acceptTable) && bytes.IndexByte(accept, byte(i)) != -1 {
-			acceptTable[i] = 1
-		}
+func buildRejectTable(reject string) [256]bool {
+	var table [256]bool
+	table[0] = true
+	for i := range len(reject) {
+		table[reject[i]] = true
 	}
 
-	return acceptTable
+	return table
 }

@@ -50,9 +50,9 @@ func strLenSpn(s string, length int, accept string) int {
 	return length
 }
 
-func strLenCSpn(s string, length int, accept []byte) int {
+func strLenCSpn(s string, length int, reject *[256]bool) int {
 	for i := range length {
-		if s[i] == 0 || accept[s[i]] == 1 {
+		if reject[s[i]] {
 			return i
 		}
 	}
@@ -91,16 +91,12 @@ func toUpperCmp(expectedUpper, s string) bool {
 	return true
 }
 
-func searchKeyword(key string, keywords map[string]byte) byte {
-	if len(key) > tokenSize {
-		return keywords[strings.ToUpper(key)]
-	}
-
+func searchKeyword(key string) byte {
 	var upper [tokenSize]byte
 	for i := range len(key) {
 		c := key[i]
 		if c >= 0x80 {
-			return keywords[strings.ToUpper(key)]
+			return sqlKeywords[strings.ToUpper(key)]
 		}
 
 		if c >= 'a' && c <= 'z' {
@@ -110,5 +106,5 @@ func searchKeyword(key string, keywords map[string]byte) byte {
 		upper[i] = c
 	}
 
-	return keywords[string(upper[:len(key)])]
+	return sqlKeywords[string(upper[:len(key)])]
 }

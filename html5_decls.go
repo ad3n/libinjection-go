@@ -18,7 +18,6 @@ const (
 	html5TypeTagNameOpen
 	html5TypeTagNameClose
 	html5TypeTagNameSelfClose
-	html5TypeTagData
 	html5TypeTagClose
 	html5TypeAttrName
 	html5TypeAttrValue
@@ -37,12 +36,12 @@ const (
 type fnH5State func(*h5State) bool
 
 type h5State struct {
+	state      fnH5State
 	s          string
+	tokenStart string
 	len        int
 	pos        int
-	isClose    bool
-	state      fnH5State
-	tokenStart string
 	tokenLen   int
 	tokenType  int
+	isClose    bool
 }
