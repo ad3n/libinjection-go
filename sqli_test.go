@@ -377,7 +377,7 @@ func TestNotWhitelistDirectState(t *testing.T) {
 		s.tokenVec[0].category = sqliTokenTypeNumber
 		s.tokenVec[0].len = 1
 		s.tokenVec[1].category = sqliTokenTypeComment
-		s.tokenVec[1].val = "/"
+		s.tokenVec[1].val = "-"
 		s.tokenVec[1].len = 1
 		return s
 	}

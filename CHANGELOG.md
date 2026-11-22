@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.6](https://github.com/corazawaf/libinjection-go/compare/v0.3.5...v0.3.6) (2026-11-17)
+
+
+### Bug Fixes
+
+* add missing MySQL charset introducers ([#141](https://github.com/corazawaf/libinjection-go/issues/141)) ([355a9b3](https://github.com/corazawaf/libinjection-go/commit/355a9b39be7f692a976372cb34b675f45ec07188))
+* match C strchr NUL semantics in SQLi span helpers ([#140](https://github.com/corazawaf/libinjection-go/issues/140)) ([146d02f](https://github.com/corazawaf/libinjection-go/commit/146d02fa319991b7af3b80c07b14d236decff34d))
+* treat LIKE as an operator when it follows an operand ([#138](https://github.com/corazawaf/libinjection-go/issues/138)) ([24322d8](https://github.com/corazawaf/libinjection-go/commit/24322d8dcaccb6ce078151937741fb4f7e462a55))
+
+## [0.3.5](https://github.com/corazawaf/libinjection-go/compare/v0.3.4...v0.3.5) (2026-10-08)
+
+
+### Bug Fixes
+
+* restore upstream parity in the 1c whitelist and q-string delimiter check ([#135](https://github.com/corazawaf/libinjection-go/issues/135)) ([dcfc067](https://github.com/corazawaf/libinjection-go/commit/dcfc0677ef1314df245b4aac42b312f9e471406c))
+
 ## [0.3.4](https://github.com/corazawaf/libinjection-go/compare/v0.3.3...v0.3.4) (2026-10-07)
 
 

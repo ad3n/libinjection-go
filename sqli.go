@@ -115,7 +115,7 @@ func (s *sqliState) merge(tokenA, tokenB *sqliToken) bool {
 	return true
 }
 
-//nolint:gocyclo // complexity 178, reduction tracked in #129
+//nolint:gocyclo // complexity 179, reduction tracked in #129
 func (s *sqliState) fold() int {
 	var (
 		pos         = 0
@@ -269,7 +269,7 @@ func (s *sqliState) fold() int {
 		case s.tokenVec[left].category == sqliTokenTypeOperator &&
 			(toUpperCmp("LIKE", s.tokenVec[left].val[:s.tokenVec[left].len]) ||
 				toUpperCmp("NOT LIKE", s.tokenVec[left].val[:s.tokenVec[left].len])):
-			if s.tokenVec[left+1].category == sqliTokenTypeLeftParenthesis {
+			if s.tokenVec[left+1].category == sqliTokenTypeLeftParenthesis && !isOperandBefore(s, left) {
 				s.tokenVec[left].category = sqliTokenTypeFunction
 			}
 		case s.tokenVec[left].category == sqliTokenTypeSQLType &&
@@ -564,7 +564,7 @@ func (s *sqliState) notWhitelist() bool {
 
 		if s.tokenVec[0].category == sqliTokenTypeNumber &&
 			s.tokenVec[1].category == sqliTokenTypeComment &&
-			s.tokenVec[1].val[0] != '/' {
+			s.tokenVec[1].val[0] == '/' {
 			return true
 		}
 
@@ -708,4 +708,16 @@ func IsSQLi(input string) (bool, string) {
 	}
 
 	return false, ""
+}
+
+func isOperandBefore(s *sqliState, left int) bool {
+	if left == 0 {
+		return false
+	}
+	switch s.tokenVec[left-1].category {
+	case sqliTokenTypeNumber, sqliTokenTypeString, sqliTokenTypeBareWord,
+		sqliTokenTypeVariable, sqliTokenTypeRightParenthesis:
+		return true
+	}
+	return false
 }

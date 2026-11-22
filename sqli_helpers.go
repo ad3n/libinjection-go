@@ -38,6 +38,10 @@ func isByteWhite(ch byte) bool {
 
 func strLenSpn(s string, length int, accept string) int {
 	for i := range length {
+		if s[i] == 0 {
+			continue
+		}
+
 		if strings.IndexByte(accept, s[i]) == -1 {
 			return i
 		}
@@ -48,7 +52,7 @@ func strLenSpn(s string, length int, accept string) int {
 
 func strLenCSpn(s string, length int, accept []byte) int {
 	for i := range length {
-		if accept[s[i]] == 1 {
+		if s[i] == 0 || accept[s[i]] == 1 {
 			return i
 		}
 	}
